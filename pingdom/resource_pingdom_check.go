@@ -249,7 +249,7 @@ func checkForResource(d *schema.ResourceData) (pingdom.Check, error) {
 		}
 		return &h, nil
 	case "ping":
-		return pingdom.PingCheck{BaseCheck: b}, nil
+		return &pingdom.PingCheck{BaseCheck: b}, nil
 	default:
 		return nil, fmt.Errorf("unknown type for check '%v'", checkType)
 	}
@@ -308,14 +308,6 @@ func resourcePingdomCheckRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("sendnotificationwhendown", ck.SendNotificationWhenDown)
 	d.Set("notifyagainevery", ck.NotifyAgainEvery)
 	d.Set("notifywhenbackup", ck.NotifyWhenBackup)
-	cids := schema.NewSet(
-		func(contactId interface{}) int { return contactId.(int) },
-		[]interface{}{},
-	)
-	for _, contactId := range ck.ContactIds {
-		cids.Add(contactId)
-	}
-	d.Set("userids", cids)
 
 	integids := schema.NewSet(
 		func(integrationId interface{}) int { return integrationId.(int) },
