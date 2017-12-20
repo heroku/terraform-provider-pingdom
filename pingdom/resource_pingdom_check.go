@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/russellcardullo/go-pingdom/pingdom"
+	"github.com/heroku/go-pingdom/pingdom"
 )
 
 func resourcePingdomCheck() *schema.Resource {
@@ -45,36 +45,6 @@ func resourcePingdomCheck() *schema.Resource {
 				ForceNew: false,
 			},
 
-			"sendtoemail": &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-				ForceNew: false,
-			},
-
-			"sendtosms": &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-				ForceNew: false,
-			},
-
-			"sendtotwitter": &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-				ForceNew: false,
-			},
-
-			"sendtoiphone": &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-				ForceNew: false,
-			},
-
-			"sendtoandroid": &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-				ForceNew: false,
-			},
-
 			"sendnotificationwhendown": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -95,12 +65,7 @@ func resourcePingdomCheck() *schema.Resource {
 				Computed: true,
 			},
 
-			"uselegacynotifications": &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-				ForceNew: false,
-			},
-			"contactids": &schema.Schema{
+			"userids": &schema.Schema{
 				Type:     schema.TypeSet,
 				Optional: true,
 				ForceNew: false,
@@ -118,6 +83,7 @@ func resourcePingdomCheck() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				ForceNew: false,
+				Default:  true,
 			},
 
 			"url": &schema.Schema{
@@ -184,90 +150,41 @@ func resourcePingdomCheck() *schema.Resource {
 	}
 }
 
-type commonCheckParams struct {
-	Name                     string
-	Hostname                 string
-	Resolution               int
-	Paused                   bool
-	SendToAndroid            bool
-	SendToEmail              bool
-	SendToIPhone             bool
-	SendToSms                bool
-	SendToTwitter            bool
-	SendNotificationWhenDown int
-	NotifyAgainEvery         int
-	NotifyWhenBackup         bool
-	UseLegacyNotifications   bool
-	ContactIds               []int
-	IntegrationIds           []int
-	Url                      string
-	Encryption               bool
-	Port                     int
-	Username                 string
-	Password                 string
-	ShouldContain            string
-	ShouldNotContain         string
-	PostData                 string
-	RequestHeaders           map[string]string
-	Tags                     string
-	ProbeFilters             string
-}
-
 func checkForResource(d *schema.ResourceData) (pingdom.Check, error) {
-	checkParams := commonCheckParams{}
+	b := pingdom.BaseCheck{}
 
 	// required
 	if v, ok := d.GetOk("name"); ok {
-		checkParams.Name = v.(string)
+		b.Name = v.(string)
 	}
 	if v, ok := d.GetOk("host"); ok {
-		checkParams.Hostname = v.(string)
-	}
-
-	if v, ok := d.GetOk("resolution"); ok {
-		checkParams.Resolution = v.(int)
+		b.Host = v.(string)
 	}
 
 	// optional
-	if v, ok := d.GetOk("sendtoemail"); ok {
-		checkParams.SendToEmail = v.(bool)
-	}
-
-	if v, ok := d.GetOk("sendtosms"); ok {
-		checkParams.SendToSms = v.(bool)
-	}
-
-	if v, ok := d.GetOk("sendtoiphone"); ok {
-		checkParams.SendToIPhone = v.(bool)
-	}
-
-	if v, ok := d.GetOk("sendtoandroid"); ok {
-		checkParams.SendToAndroid = v.(bool)
+	if v, ok := d.GetOk("resolution"); ok {
+		b.Resolution = pingdom.OptInt(v.(int))
 	}
 
 	if v, ok := d.GetOk("sendnotificationwhendown"); ok {
-		checkParams.SendNotificationWhenDown = v.(int)
+		b.SendNotificationWhenDown = pingdom.OptInt(v.(int))
 	}
 
 	if v, ok := d.GetOk("notifyagainevery"); ok {
-		checkParams.NotifyAgainEvery = v.(int)
+		b.NotifyAgainEvery = pingdom.OptInt(v.(int))
 	}
 
 	if v, ok := d.GetOk("notifywhenbackup"); ok {
-		checkParams.NotifyWhenBackup = v.(bool)
+		b.NotifyWhenBackup = pingdom.OptBool(v.(bool))
 	}
 
-	if v, ok := d.GetOk("uselegacynotifications"); ok {
-		checkParams.UseLegacyNotifications = v.(bool)
-	}
-
-	if v, ok := d.GetOk("contactids"); ok {
+	if v, ok := d.GetOk("userids"); ok {
 		interfaceSlice := v.(*schema.Set).List()
 		var intSlice []int
 		for i := range interfaceSlice {
 			intSlice = append(intSlice, interfaceSlice[i].(int))
 		}
-		checkParams.ContactIds = intSlice
+		b.UserIds = &intSlice
 	}
 
 	if v, ok := d.GetOk("integrationids"); ok {
@@ -276,104 +193,63 @@ func checkForResource(d *schema.ResourceData) (pingdom.Check, error) {
 		for i := range interfaceSlice {
 			intSlice = append(intSlice, interfaceSlice[i].(int))
 		}
-		checkParams.IntegrationIds = intSlice
+		b.IntegrationIds = &intSlice
 	}
 
-	if v, ok := d.GetOk("url"); ok {
-		checkParams.Url = v.(string)
-	}
-
-	if v, ok := d.GetOk("encryption"); ok {
-		checkParams.Encryption = v.(bool)
-	}
-
-	if v, ok := d.GetOk("port"); ok {
-		checkParams.Port = v.(int)
-	}
-
-	if v, ok := d.GetOk("username"); ok {
-		checkParams.Username = v.(string)
-	}
-
-	if v, ok := d.GetOk("password"); ok {
-		checkParams.Password = v.(string)
-	}
-
-	if v, ok := d.GetOk("shouldcontain"); ok {
-		checkParams.ShouldContain = v.(string)
-	}
-
-	if v, ok := d.GetOk("shouldnotcontain"); ok {
-		checkParams.ShouldNotContain = v.(string)
-	}
-
-	if v, ok := d.GetOk("postdata"); ok {
-		checkParams.PostData = v.(string)
-	}
-
-	if m, ok := d.GetOk("requestheaders"); ok {
-		checkParams.RequestHeaders = make(map[string]string)
-		for k, v := range m.(map[string]interface{}) {
-			checkParams.RequestHeaders[k] = v.(string)
-		}
-	}
 	if v, ok := d.GetOk("tags"); ok {
-		checkParams.Tags = v.(string)
+		b.Tags = pingdom.OptStr(v.(string))
 	}
 
 	if v, ok := d.GetOk("probefilters"); ok {
-		checkParams.ProbeFilters = v.(string)
+		b.ProbeFilters = pingdom.OptStr(v.(string))
 	}
 
 	checkType := d.Get("type")
 	switch checkType {
 	case "http":
-		return &pingdom.HttpCheck{
-			Name:                     checkParams.Name,
-			Hostname:                 checkParams.Hostname,
-			Resolution:               checkParams.Resolution,
-			Paused:                   checkParams.Paused,
-			SendToAndroid:            checkParams.SendToAndroid,
-			SendToEmail:              checkParams.SendToEmail,
-			SendToIPhone:             checkParams.SendToIPhone,
-			SendToSms:                checkParams.SendToSms,
-			SendToTwitter:            checkParams.SendToTwitter,
-			SendNotificationWhenDown: checkParams.SendNotificationWhenDown,
-			NotifyAgainEvery:         checkParams.NotifyAgainEvery,
-			NotifyWhenBackup:         checkParams.NotifyWhenBackup,
-			UseLegacyNotifications:   checkParams.UseLegacyNotifications,
-			ContactIds:               checkParams.ContactIds,
-			IntegrationIds:           checkParams.IntegrationIds,
-			Encryption:               checkParams.Encryption,
-			Url:                      checkParams.Url,
-			Port:                     checkParams.Port,
-			Username:                 checkParams.Username,
-			Password:                 checkParams.Password,
-			ShouldContain:            checkParams.ShouldContain,
-			ShouldNotContain:         checkParams.ShouldNotContain,
-			PostData:                 checkParams.PostData,
-			RequestHeaders:           checkParams.RequestHeaders,
-			Tags:                     checkParams.Tags,
-			ProbeFilters:             checkParams.ProbeFilters,
-		}, nil
+		h := pingdom.HttpCheck{BaseCheck: b}
+
+		if v, ok := d.GetOk("url"); ok {
+			h.Url = pingdom.OptStr(v.(string))
+		}
+
+		if v, ok := d.GetOk("encryption"); ok {
+			h.Encryption = pingdom.OptBool(v.(bool))
+		}
+
+		if v, ok := d.GetOk("port"); ok {
+			h.Port = pingdom.OptInt(v.(int))
+		}
+
+		if v, ok := d.GetOk("username"); ok {
+			h.Username = pingdom.OptStr(v.(string))
+		}
+
+		if v, ok := d.GetOk("password"); ok {
+			h.Password = pingdom.OptStr(v.(string))
+		}
+
+		if v, ok := d.GetOk("shouldcontain"); ok {
+			h.ShouldContain = pingdom.OptStr(v.(string))
+		}
+
+		if v, ok := d.GetOk("shouldnotcontain"); ok {
+			h.ShouldNotContain = pingdom.OptStr(v.(string))
+		}
+
+		if v, ok := d.GetOk("postdata"); ok {
+			h.PostData = pingdom.OptStr(v.(string))
+		}
+
+		if m, ok := d.GetOk("requestheaders"); ok {
+			h.RequestHeaders = make(map[string]string)
+			for k, v := range m.(map[string]interface{}) {
+				h.RequestHeaders[k] = v.(string)
+			}
+		}
+		return &h, nil
 	case "ping":
-		return &pingdom.PingCheck{
-			Name:                     checkParams.Name,
-			Hostname:                 checkParams.Hostname,
-			Resolution:               checkParams.Resolution,
-			Paused:                   checkParams.Paused,
-			SendToAndroid:            checkParams.SendToAndroid,
-			SendToEmail:              checkParams.SendToEmail,
-			SendToIPhone:             checkParams.SendToIPhone,
-			SendToSms:                checkParams.SendToSms,
-			SendToTwitter:            checkParams.SendToTwitter,
-			SendNotificationWhenDown: checkParams.SendNotificationWhenDown,
-			NotifyAgainEvery:         checkParams.NotifyAgainEvery,
-			NotifyWhenBackup:         checkParams.NotifyWhenBackup,
-			UseLegacyNotifications:   checkParams.UseLegacyNotifications,
-			ContactIds:               checkParams.ContactIds,
-			IntegrationIds:           checkParams.IntegrationIds,
-		}, nil
+		return pingdom.PingCheck{BaseCheck: b}, nil
 	default:
 		return nil, fmt.Errorf("unknown type for check '%v'", checkType)
 	}
@@ -429,11 +305,6 @@ func resourcePingdomCheckRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("host", ck.Hostname)
 	d.Set("name", ck.Name)
 	d.Set("resolution", ck.Resolution)
-	d.Set("sendtoandroid", ck.SendToAndroid)
-	d.Set("sendtoemail", ck.SendToEmail)
-	d.Set("sendtoiphone", ck.SendToIPhone)
-	d.Set("sendtosms", ck.SendToSms)
-	d.Set("sendtotwitter", ck.SendToTwitter)
 	d.Set("sendnotificationwhendown", ck.SendNotificationWhenDown)
 	d.Set("notifyagainevery", ck.NotifyAgainEvery)
 	d.Set("notifywhenbackup", ck.NotifyWhenBackup)
@@ -444,7 +315,7 @@ func resourcePingdomCheckRead(d *schema.ResourceData, meta interface{}) error {
 	for _, contactId := range ck.ContactIds {
 		cids.Add(contactId)
 	}
-	d.Set("contactids", cids)
+	d.Set("userids", cids)
 
 	integids := schema.NewSet(
 		func(integrationId interface{}) int { return integrationId.(int) },
