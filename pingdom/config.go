@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/russellcardullo/go-pingdom/pingdom"
+	"github.com/heroku/go-pingdom/pingdom"
 )
 
 type Config struct {
