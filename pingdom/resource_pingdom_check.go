@@ -388,7 +388,7 @@ func resourcePingdomCheckImporter(d *schema.ResourceData, meta interface{}) ([]*
 		return nil, fmt.Errorf("Error retrieving id for resource: %s", err)
 	}
 
-	log.Printf("[INFO] Importing key using ADDR ID %s", id)
+	log.Printf("[INFO] Importing key using ADDR ID %d", id)
 
 	return []*schema.ResourceData{d}, nil
 }
